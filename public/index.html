@@ -71,6 +71,25 @@
                 <option value="360p">360p (SD)</option>
               </select>
             </div>
+            <!-- Cookie Source Row -->
+            <div class="settings-row" style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">YouTube Authentication (Cookies)</label>
+              <select id="cookie-source-select" onchange="toggleCookieFileInput()" style="background: rgba(15, 17, 28, 0.8); border: 1px solid var(--surface-border); border-radius: var(--border-radius-sm); padding: 0 12px; color: var(--text-main); font-size: 13px; height: 38px; cursor: pointer; outline: none; transition: var(--transition-smooth); width: 100%;">
+                <option value="none">No Cookies (Default)</option>
+                <option value="chrome">Use Chrome Cookies</option>
+                <option value="edge">Use Microsoft Edge Cookies</option>
+                <option value="firefox">Use Firefox Cookies</option>
+                <option value="brave">Use Brave Cookies</option>
+                <option value="opera">Use Opera Cookies</option>
+                <option value="vivaldi">Use Vivaldi Cookies</option>
+                <option value="custom">Custom Cookies File (.txt)</option>
+              </select>
+            </div>
+            <!-- Custom Cookie File Row -->
+            <div class="settings-row hidden" id="cookie-file-row" style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Cookies File Path (.txt)</label>
+              <input type="text" id="cookie-file-input" placeholder="Example: C:\ApexTube\cookies.txt" style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--surface-border); border-radius: var(--border-radius-sm); padding: 10px 12px; color: var(--text-main); font-size: 13px; height: 38px; outline: none;">
+            </div>
             <!-- Save Buttons Row -->
             <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
               <button class="btn-primary" onclick="saveAppSettings()" style="padding: 10px 20px; font-size: 13px; white-space: nowrap; height: 38px; display: flex; align-items: center; gap: 8px; border-radius: var(--border-radius-sm); cursor: pointer; font-weight: 600;">

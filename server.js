@@ -25,8 +25,9 @@ const REPORT_JSON_FILE = path.join(LOG_DIR, 'report.json');
   }
 });
 
-// Prepend bin directory to environment PATH so spawned processes can find local binaries
-process.env.PATH = `${BIN_DIR}${path.delimiter}${process.env.PATH}`;
+// Prepend bin directory and Node's directory to environment PATH so spawned processes can find local binaries and node.js
+const nodeDir = path.dirname(process.execPath);
+process.env.PATH = `${BIN_DIR}${path.delimiter}${nodeDir}${path.delimiter}${process.env.PATH}`;
 
 // Middleware
 app.use(express.json({ limit: '50mb' }));
@@ -37,7 +38,12 @@ app.use(express.static(PUBLIC_DIR));
 let sseClients = [];
 
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
-let settings = { downloadDir: '', maxResolution: 'best' };
+let settings = {
+  downloadDir: '',
+  maxResolution: 'best',
+  cookieSource: 'none',
+  cookieFile: ''
+};
 
 function loadSettings() {
   if (fs.existsSync(SETTINGS_FILE)) {
@@ -69,6 +75,25 @@ function getDownloadDir() {
     return customPath;
   }
   return DOWNLOAD_DIR;
+}
+
+function getCookieArgs() {
+  const args = [];
+  if (settings.cookieSource && settings.cookieSource !== 'none') {
+    if (settings.cookieSource === 'custom') {
+      if (settings.cookieFile && settings.cookieFile.trim().length > 0) {
+        const filePath = path.resolve(settings.cookieFile.trim());
+        if (fs.existsSync(filePath)) {
+          args.push('--cookies', filePath);
+        } else {
+          console.warn(`Cookie file not found at: ${filePath}`);
+        }
+      }
+    } else {
+      args.push('--cookies-from-browser', settings.cookieSource);
+    }
+  }
+  return args;
 }
 
 // Global State Queue
@@ -484,7 +509,8 @@ async function runDownloadQueue() {
       if (!title || !thumbUrl) {
         broadcast('log', { message: `Extracting info for ${activeDownload.url}...` });
         const info = await new Promise((resolve, reject) => {
-          execFile(binPath, ['--js-runtimes', 'node', '-j', '--no-playlist', activeDownload.url], { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
+          const extractArgs = ['--js-runtimes', 'node', '-j', '--no-playlist', ...getCookieArgs(), activeDownload.url];
+          execFile(binPath, extractArgs, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
             if (error) {
               return reject(new Error(stderr || error.message));
             }
@@ -545,6 +571,7 @@ async function runDownloadQueue() {
         '-o', path.join(videoDir, videoFilenameTemplate),
         '--no-playlist',
         '-f', format,
+        ...getCookieArgs(),
         activeDownload.url
       ];
 
@@ -728,7 +755,8 @@ app.post('/api/extract', async (req, res) => {
 
     if (singleId) {
       // It's a single video, extract metadata directly
-      execFile(binPath, ['--js-runtimes', 'node', '-j', '--no-playlist', url], { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
+      const extractArgs = ['--js-runtimes', 'node', '-j', '--no-playlist', ...getCookieArgs(), url];
+      execFile(binPath, extractArgs, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
         if (error) {
           return res.status(500).json({ error: stderr || error.message });
         }
@@ -751,7 +779,8 @@ app.post('/api/extract', async (req, res) => {
       });
     } else {
       // It might be a channel or playlist. Use flat-playlist to load quickly
-      execFile(binPath, ['--js-runtimes', 'node', '--flat-playlist', '--dump-single-json', url], { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
+      const playlistArgs = ['--js-runtimes', 'node', '--flat-playlist', '--dump-single-json', ...getCookieArgs(), url];
+      execFile(binPath, playlistArgs, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
         if (error) {
           return res.status(500).json({ error: stderr || error.message });
         }
@@ -920,13 +949,15 @@ app.get('/api/settings', (req, res) => {
   res.json({
     downloadDir: settings.downloadDir || '',
     defaultDir: DOWNLOAD_DIR,
-    maxResolution: settings.maxResolution || 'best'
+    maxResolution: settings.maxResolution || 'best',
+    cookieSource: settings.cookieSource || 'none',
+    cookieFile: settings.cookieFile || ''
   });
 });
 
 // 4.5 POST Save Path config
 app.post('/api/settings', (req, res) => {
-  const { downloadDir, maxResolution } = req.body;
+  const { downloadDir, maxResolution, cookieSource, cookieFile } = req.body;
   
   if (downloadDir && downloadDir.trim().length > 0) {
     const resolvedPath = path.resolve(downloadDir.trim());
@@ -944,6 +975,14 @@ app.post('/api/settings', (req, res) => {
   
   if (maxResolution) {
     settings.maxResolution = maxResolution;
+  }
+
+  if (cookieSource) {
+    settings.cookieSource = cookieSource;
+  }
+
+  if (cookieFile !== undefined) {
+    settings.cookieFile = cookieFile;
   }
   
   saveSettings();

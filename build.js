@@ -71,6 +71,14 @@ console.log('[i] Copying package files & launchers...');
 fs.copyFileSync(path.join(__dirname, 'package.json'), path.join(DIST_DIR, 'package.json'));
 fs.copyFileSync(path.join(__dirname, 'Start.bat'), path.join(DIST_DIR, 'Start.bat'));
 
+// 6. Copy bin folder
+console.log('[i] Copying binary tools (bin)...');
+const BIN_SRC = path.join(__dirname, 'bin');
+const BIN_DEST = path.join(DIST_DIR, 'bin');
+if (fs.existsSync(BIN_SRC)) {
+  copyDirSync(BIN_SRC, BIN_DEST);
+}
+
 console.log('\n==================================================');
 console.log('[V] Build completed successfully!');
 console.log(`[i] Obfuscated project files ready in:\n    ${DIST_DIR}`);
