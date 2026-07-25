@@ -15,7 +15,19 @@ if exist "%~dp0bin\node.exe" (
     goto node_ok
 )
 
-:: 2. Check if Node.js is installed
+:: 2. Attempt to download portable Node.js if missing
+echo [i] Portable Node.js environment not found.
+echo [i] Downloading portable Node.js, please wait...
+if not exist "%~dp0bin" mkdir "%~dp0bin"
+powershell -Command "Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.15.1/win-x64/node.exe' -OutFile '%~dp0bin\node.exe'" >nul 2>&1
+
+if exist "%~dp0bin\node.exe" (
+    echo [V] Portable Node.js downloaded successfully!
+    set "PATH=%~dp0bin;%PATH%"
+    goto node_ok
+)
+
+:: 3. Fallback Check if system Node.js is installed
 node -v >nul 2>&1
 if not errorlevel 1 goto node_ok
 
