@@ -1,0 +1,27 @@
+# Dependency directories
+node_modules/
+
+# Local media download directories
+downloads/
+download/
+
+# Local configuration files
+settings.json
+
+# Local log files
+logs/
+*.log
+
+# Large external binaries (automatically downloaded on run)
+bin/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Agent state directories
+.agents/
+.gemini/
+
+# Build distribution output folder
+dist/

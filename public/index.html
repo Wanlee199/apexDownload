@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Premium YouTube Video and Thumbnail Downloader with real-time progress.">
+  <title>ApexTube - Premium Video Downloader</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Background Glows -->
+  <div class="glow-bg glow-primary"></div>
+  <div class="glow-bg glow-secondary"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-logo">
+        <div class="logo-icon"><i data-lucide="play" class="icon-fill"></i></div>
+        <div class="logo-text">
+          <h1>ApexTube</h1>
+          <span class="logo-tagline">Premium Downloader</span>
+        </div>
+      </div>
+      
+      <!-- System Status Bar -->
+      <div class="status-bar" id="system-status">
+        <span class="status-indicator status-offline" id="status-indicator"></span>
+        <span class="status-label" id="status-label">Connecting Server...</span>
+        <div class="badge" id="stats-badge"><i data-lucide="folder-down"></i> <span id="download-count">0</span> files</div>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="app-main">
+      <!-- Left Panel: Form and Queue Controls -->
+      <div class="panel-left">
+        <!-- Settings Panel -->
+        <section class="settings-section glass-card" style="margin-bottom: 24px; padding: 20px;">
+          <div class="settings-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+            <h2 style="font-size: 14px; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="sliders" style="width: 16px; height: 16px; color: var(--primary-color);"></i> Settings & Configuration
+            </h2>
+          </div>
+          <div class="settings-body" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Save Directory Row -->
+            <div class="settings-row" style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Save Directory Path</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="custom-dir-input" placeholder="Default: downloads/ folder inside project" style="flex-grow: 1; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--surface-border); border-radius: var(--border-radius-sm); padding: 10px 12px; color: var(--text-main); font-size: 13px; height: 38px; outline: none;">
+                <button class="btn-secondary" id="browse-dir-btn" onclick="browseDirectory()" style="padding: 0 16px; font-size: 13px; white-space: nowrap; height: 38px; border-radius: var(--border-radius-sm); cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                  <i data-lucide="folder-open" style="width: 16px; height: 16px;"></i> Browse...
+                </button>
+              </div>
+            </div>
+            <!-- Resolution Row -->
+            <div class="settings-row" style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Max Video Resolution</label>
+              <select id="max-res-select" style="background: rgba(15, 17, 28, 0.8); border: 1px solid var(--surface-border); border-radius: var(--border-radius-sm); padding: 0 12px; color: var(--text-main); font-size: 13px; height: 38px; cursor: pointer; outline: none; transition: var(--transition-smooth); width: 100%;">
+                <option value="best">Highest Available (Default)</option>
+                <option value="1080p">1080p (Full HD)</option>
+                <option value="720p">720p (HD)</option>
+                <option value="480p">480p (SD)</option>
+                <option value="360p">360p (SD)</option>
+              </select>
+            </div>
+            <!-- Save Buttons Row -->
+            <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+              <button class="btn-primary" onclick="saveAppSettings()" style="padding: 10px 20px; font-size: 13px; white-space: nowrap; height: 38px; display: flex; align-items: center; gap: 8px; border-radius: var(--border-radius-sm); cursor: pointer; font-weight: 600;">
+                <i data-lucide="save"></i> Save Settings
+              </button>
+            </div>
+            <p class="settings-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 4px; margin-bottom: 0; line-height: 1.4;">
+              Absolute path examples: <code>D:\Videos</code>. Restricting resolution limits requires FFmpeg.
+            </p>
+          </div>
+        </section>
+
+        <!-- Tabs Header -->
+        <div class="tabs-header">
+          <button class="tab-btn active" id="tab-list-btn" onclick="switchTab('list')">
+            <i data-lucide="list-video"></i> List of URLs
+          </button>
+          <button class="tab-btn" id="tab-playlist-btn" onclick="switchTab('playlist')">
+            <i data-lucide="library"></i> Playlist / Channel
+          </button>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="tab-viewport">
+          <!-- Tab 1: URL List -->
+          <div class="tab-pane active" id="pane-list">
+            <div class="pane-description">
+              Enter one or multiple YouTube URLs (one per line). Duplicates will be filtered automatically, and already-downloaded videos will be skipped.
+            </div>
+            <div class="input-group">
+              <label for="url-list-textarea">YouTube URLs</label>
+              <textarea id="url-list-textarea" placeholder="https://www.youtube.com/watch?v=...&#10;https://youtu.be/...&#10;https://www.youtube.com/shorts/..."></textarea>
+            </div>
+            <button id="download-list-btn" class="btn-primary" onclick="submitUrlList()">
+              <i data-lucide="download"></i> Start Downloading List
+            </button>
+          </div>
+
+          <!-- Tab 2: Playlist / Channel -->
+          <div class="tab-pane" id="pane-playlist">
+            <div class="pane-description">
+              Provide a channel URL, playlist URL, or video URL. The server will scan the metadata first, allowing you to preview and select which videos to download.
+            </div>
+            <div class="input-inline">
+              <div class="input-group flex-grow">
+                <label for="playlist-url-input">Playlist / Channel URL</label>
+                <input type="text" id="playlist-url-input" placeholder="https://www.youtube.com/playlist?list=... or https://www.youtube.com/@Channel">
+              </div>
+              <button id="scan-playlist-btn" class="btn-secondary" onclick="scanPlaylist()">
+                <i data-lucide="search"></i> Scan
+              </button>
+            </div>
+
+            <!-- Playlist Pre-Extraction Results -->
+            <div class="playlist-results-box hidden" id="playlist-results-box">
+              <div class="results-header">
+                <div class="results-title-info">
+                  <h3 id="playlist-title">Scanning...</h3>
+                  <span id="playlist-count">0 videos found</span>
+                </div>
+                <div class="results-actions">
+                  <button class="btn-text" onclick="toggleSelectAllPlaylist(true)">Select All</button>
+                  <span class="divider">|</span>
+                  <button class="btn-text" onclick="toggleSelectAllPlaylist(false)">Clear</button>
+                </div>
+              </div>
+              
+              <div class="playlist-items-list" id="playlist-items-list">
+                <!-- Javascript will inject list of videos with checkboxes -->
+              </div>
+
+              <div class="results-footer">
+                <span id="selected-count">0/0 selected</span>
+                <button id="download-selected-btn" class="btn-primary btn-sm" onclick="downloadSelectedPlaylist()">
+                  <i data-lucide="download"></i> Download Selected
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Download Panel -->
+        <section class="active-download-section hidden" id="active-download-container">
+          <div class="section-title"><span class="pulse-icon"></span> Now Downloading</div>
+          <div class="glass-card active-card">
+            <div class="active-card-body">
+              <div class="active-thumbnail" id="active-video-thumb">
+                <div class="thumb-placeholder"><i data-lucide="video"></i></div>
+              </div>
+              <div class="active-details">
+                <h3 id="active-video-title">Fetching video title...</h3>
+                <a href="#" target="_blank" id="active-video-url" class="video-link">https://youtube.com/watch...</a>
+                
+                <div class="metrics-row">
+                  <span class="metric-item"><i data-lucide="gauge"></i> <span id="active-speed">0 KB/s</span></span>
+                  <span class="metric-item"><i data-lucide="clock"></i> <span id="active-eta">00:00</span></span>
+                  <span class="metric-item"><i data-lucide="hash"></i> <span id="active-stt">---</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="active-progress-container">
+              <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" id="active-progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-percentage"><span id="active-progress-text">0%</span></div>
+            </div>
+            <div class="active-controls" id="queue-controls">
+              <button id="pause-btn" class="btn-secondary btn-sm" onclick="pauseDownloads()">
+                <i data-lucide="pause"></i> Pause
+              </button>
+              <button id="resume-btn" class="btn-secondary btn-sm hidden" onclick="resumeDownloads()">
+                <i data-lucide="play"></i> Resume
+              </button>
+              <button id="cancel-btn" class="btn-secondary btn-sm btn-danger" onclick="cancelDownloads()">
+                <i data-lucide="x"></i> Cancel
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Download Queue -->
+        <section class="queue-section hidden" id="queue-container">
+          <div class="section-header">
+            <div class="section-title">Download Queue (<span id="queue-count">0</span>)</div>
+            <button class="btn-text btn-danger hidden" id="clear-queue-btn">Cancel Queue</button>
+          </div>
+          <div class="queue-list" id="queue-items-list">
+            <!-- Queue items -->
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Panel: Download Logs and Reports -->
+      <div class="panel-right">
+        <!-- Log-date (History) section -->
+        <section class="log-section glass-card">
+          <div class="card-header">
+            <h2><i data-lucide="database"></i> Download History (log-date)</h2>
+            <button class="btn-icon" onclick="refreshHistory()" title="Refresh Logs"><i data-lucide="refresh-cw" id="history-refresh-icon"></i></button>
+          </div>
+          <div class="history-list" id="history-items-list">
+            <div class="empty-state">
+              <i data-lucide="history"></i>
+              <p>No downloads logged yet</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Reports Section -->
+        <section class="report-section glass-card">
+          <div class="card-header">
+            <h2><i data-lucide="file-spreadsheet"></i> Download Reports</h2>
+            <div class="report-actions">
+              <button class="btn-icon" onclick="refreshReport()" title="Refresh Reports"><i data-lucide="refresh-cw" id="report-refresh-icon"></i></button>
+            </div>
+          </div>
+          
+          <div class="report-tabs">
+            <button class="report-tab-btn active" onclick="switchReportTab('visual')">Summary</button>
+            <button class="report-tab-btn" onclick="switchReportTab('raw')">Raw Text</button>
+          </div>
+
+          <div class="report-content" id="report-visual-pane">
+            <div class="report-summary-stats hidden" id="report-stats-grid">
+              <div class="stat-card">
+                <span class="stat-num text-success" id="report-stat-ok">0</span>
+                <span class="stat-lbl">Success</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-num text-danger" id="report-stat-fail">0</span>
+                <span class="stat-lbl">Failed</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-num text-info" id="report-stat-skip">0</span>
+                <span class="stat-lbl">Skipped</span>
+              </div>
+            </div>
+            <div class="report-runs-list" id="report-runs-list">
+              <div class="empty-state">
+                <i data-lucide="clipboard-list"></i>
+                <p>No reports generated yet</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-content hidden" id="report-raw-pane">
+            <pre class="raw-report-box" id="raw-report-text">No report content available.</pre>
+          </div>
+        </section>
+      </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>&copy; 2026 ApexTube Video Downloader. Dedicated local media service.</p>
+    </footer>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Core App Logic -->
+  <script src="app.js"></script>
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+  </script>
+</body>
+</html>
