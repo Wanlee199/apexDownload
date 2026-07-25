@@ -38,12 +38,7 @@ app.use(express.static(PUBLIC_DIR));
 let sseClients = [];
 
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
-let settings = {
-  downloadDir: '',
-  maxResolution: 'best',
-  cookieSource: 'none',
-  cookieFile: ''
-};
+let settings = { downloadDir: '', maxResolution: 'best' };
 
 function loadSettings() {
   if (fs.existsSync(SETTINGS_FILE)) {
@@ -75,25 +70,6 @@ function getDownloadDir() {
     return customPath;
   }
   return DOWNLOAD_DIR;
-}
-
-function getCookieArgs() {
-  const args = [];
-  if (settings.cookieSource && settings.cookieSource !== 'none') {
-    if (settings.cookieSource === 'custom') {
-      if (settings.cookieFile && settings.cookieFile.trim().length > 0) {
-        const filePath = path.resolve(settings.cookieFile.trim());
-        if (fs.existsSync(filePath)) {
-          args.push('--cookies', filePath);
-        } else {
-          console.warn(`Cookie file not found at: ${filePath}`);
-        }
-      }
-    } else {
-      args.push('--cookies-from-browser', settings.cookieSource);
-    }
-  }
-  return args;
 }
 
 // Global State Queue
@@ -509,7 +485,7 @@ async function runDownloadQueue() {
       if (!title || !thumbUrl) {
         broadcast('log', { message: `Extracting info for ${activeDownload.url}...` });
         const info = await new Promise((resolve, reject) => {
-          const extractArgs = ['--js-runtimes', 'node', '-j', '--no-playlist', ...getCookieArgs(), activeDownload.url];
+          const extractArgs = ['--js-runtimes', `node:${process.execPath}`, '-j', '--no-playlist', activeDownload.url];
           execFile(binPath, extractArgs, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
             if (error) {
               return reject(new Error(stderr || error.message));
@@ -567,11 +543,10 @@ async function runDownloadQueue() {
       }
 
       const args = [
-        '--js-runtimes', 'node',
+        '--js-runtimes', `node:${process.execPath}`,
         '-o', path.join(videoDir, videoFilenameTemplate),
         '--no-playlist',
         '-f', format,
-        ...getCookieArgs(),
         activeDownload.url
       ];
 
@@ -579,6 +554,8 @@ async function runDownloadQueue() {
       activeProcess = ytProcess;
 
       await new Promise((resolve, reject) => {
+        let stderrOutput = '';
+
         ytProcess.stdout.on('data', (data) => {
           const text = data.toString();
           // Extract percentage, speed, ETA
@@ -605,7 +582,9 @@ async function runDownloadQueue() {
         });
 
         ytProcess.stderr.on('data', (data) => {
-          console.error(`yt-dlp stderr: ${data.toString()}`);
+          const text = data.toString();
+          stderrOutput += text;
+          console.error(`yt-dlp stderr: ${text}`);
         });
 
         ytProcess.on('close', (code) => {
@@ -613,7 +592,7 @@ async function runDownloadQueue() {
           if (code === 0) {
             resolve();
           } else {
-            reject(new Error(`yt-dlp process exited with code ${code}`));
+            reject(new Error(stderrOutput.trim() || `yt-dlp process exited with code ${code}`));
           }
         });
       });
@@ -657,8 +636,16 @@ async function runDownloadQueue() {
     } catch (err) {
       console.error(err);
       activeDownload.status = 'failed';
-      activeDownload.error = err.message;
-      broadcast('log', { message: `Failed to download ${activeDownload.url}: ${err.message}` });
+      
+      let friendlyError = err.message;
+      if (err.message.includes("Sign in to confirm you're not a bot") || err.message.includes("confirm you're not a bot")) {
+        friendlyError = "Lỗi chặn Bot của YouTube (Sign in to confirm you're not a bot). Vui lòng cấu hình nguồn Cookie trong Cài đặt (ví dụ: Chọn 'Use Chrome Cookies' hoặc nạp tệp 'cookies.txt') rồi bấm tải lại.";
+      } else if (err.message.includes("No supported JavaScript runtime could be found")) {
+        friendlyError = "Lỗi môi trường: yt-dlp không tìm thấy runtime JavaScript. Vui lòng kiểm tra lại cấu hình.";
+      }
+      
+      activeDownload.error = friendlyError;
+      broadcast('log', { message: `Failed to download ${activeDownload.url}: ${friendlyError}` });
       broadcast('item-updated', { item: activeDownload });
     }
 
@@ -755,7 +742,7 @@ app.post('/api/extract', async (req, res) => {
 
     if (singleId) {
       // It's a single video, extract metadata directly
-      const extractArgs = ['--js-runtimes', 'node', '-j', '--no-playlist', ...getCookieArgs(), url];
+      const extractArgs = ['--js-runtimes', `node:${process.execPath}`, '-j', '--no-playlist', url];
       execFile(binPath, extractArgs, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
         if (error) {
           return res.status(500).json({ error: stderr || error.message });
@@ -779,7 +766,7 @@ app.post('/api/extract', async (req, res) => {
       });
     } else {
       // It might be a channel or playlist. Use flat-playlist to load quickly
-      const playlistArgs = ['--js-runtimes', 'node', '--flat-playlist', '--dump-single-json', ...getCookieArgs(), url];
+      const playlistArgs = ['--js-runtimes', `node:${process.execPath}`, '--flat-playlist', '--dump-single-json', url];
       execFile(binPath, playlistArgs, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
         if (error) {
           return res.status(500).json({ error: stderr || error.message });
@@ -949,15 +936,13 @@ app.get('/api/settings', (req, res) => {
   res.json({
     downloadDir: settings.downloadDir || '',
     defaultDir: DOWNLOAD_DIR,
-    maxResolution: settings.maxResolution || 'best',
-    cookieSource: settings.cookieSource || 'none',
-    cookieFile: settings.cookieFile || ''
+    maxResolution: settings.maxResolution || 'best'
   });
 });
 
 // 4.5 POST Save Path config
 app.post('/api/settings', (req, res) => {
-  const { downloadDir, maxResolution, cookieSource, cookieFile } = req.body;
+  const { downloadDir, maxResolution } = req.body;
   
   if (downloadDir && downloadDir.trim().length > 0) {
     const resolvedPath = path.resolve(downloadDir.trim());
@@ -975,14 +960,6 @@ app.post('/api/settings', (req, res) => {
   
   if (maxResolution) {
     settings.maxResolution = maxResolution;
-  }
-
-  if (cookieSource) {
-    settings.cookieSource = cookieSource;
-  }
-
-  if (cookieFile !== undefined) {
-    settings.cookieFile = cookieFile;
   }
   
   saveSettings();

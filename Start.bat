@@ -8,7 +8,14 @@ echo                 ApexTube Downloader System Launcher
 echo =====================================================================
 echo.
 
-:: 1. Check if Node.js is installed
+:: 1. Check if local Node.js is present
+if exist "%~dp0bin\node.exe" (
+    echo [i] Using portable Node.js environment...
+    set "PATH=%~dp0bin;%PATH%"
+    goto node_ok
+)
+
+:: 2. Check if Node.js is installed
 node -v >nul 2>&1
 if not errorlevel 1 goto node_ok
 

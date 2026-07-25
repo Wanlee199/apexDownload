@@ -654,15 +654,8 @@ function loadSettings() {
     .then(data => {
       const dirInput = document.getElementById('custom-dir-input');
       const resSelect = document.getElementById('max-res-select');
-      const cookieSelect = document.getElementById('cookie-source-select');
-      const cookieInput = document.getElementById('cookie-file-input');
-      
       if (dirInput) dirInput.value = data.downloadDir || '';
       if (resSelect) resSelect.value = data.maxResolution || 'best';
-      if (cookieSelect) cookieSelect.value = data.cookieSource || 'none';
-      if (cookieInput) cookieInput.value = data.cookieFile || '';
-      
-      toggleCookieFileInput();
     })
     .catch(err => console.error('Failed to load settings:', err));
 }
@@ -671,8 +664,6 @@ function loadSettings() {
 function saveAppSettings() {
   const dirVal = document.getElementById('custom-dir-input').value.trim();
   const resVal = document.getElementById('max-res-select').value;
-  const cookieSourceVal = document.getElementById('cookie-source-select').value;
-  const cookieFileVal = document.getElementById('cookie-file-input').value.trim();
   
   // Show saving visual feedback
   const saveBtn = document.querySelector('.settings-body button');
@@ -686,9 +677,7 @@ function saveAppSettings() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ 
       downloadDir: dirVal,
-      maxResolution: resVal,
-      cookieSource: cookieSourceVal,
-      cookieFile: cookieFileVal
+      maxResolution: resVal 
     })
   })
     .then(res => res.json())
@@ -740,17 +729,4 @@ function browseDirectory() {
       browseBtn.innerHTML = originalHtml;
       lucide.createIcons();
     });
-}
-
-// Toggle visibility of the custom cookies file path input
-function toggleCookieFileInput() {
-  const cookieSelect = document.getElementById('cookie-source-select');
-  const cookieFileRow = document.getElementById('cookie-file-row');
-  if (cookieSelect && cookieFileRow) {
-    if (cookieSelect.value === 'custom') {
-      cookieFileRow.classList.remove('hidden');
-    } else {
-      cookieFileRow.classList.add('hidden');
-    }
-  }
 }
