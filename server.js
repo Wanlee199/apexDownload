@@ -17,6 +17,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const LOG_FILE = path.join(LOG_DIR, 'download-log.txt');
 const REPORT_TXT_FILE = path.join(LOG_DIR, 'download-report.txt');
 const REPORT_JSON_FILE = path.join(LOG_DIR, 'report.json');
+const NODE_PATH = `node:${process.execPath.replace(/\\/g, '/')}`;
 
 // Ensure directories exist
 [BIN_DIR, DOWNLOAD_DIR, LOG_DIR, PUBLIC_DIR].forEach(dir => {
@@ -485,7 +486,7 @@ async function runDownloadQueue() {
       if (!title || !thumbUrl) {
         broadcast('log', { message: `Extracting info for ${activeDownload.url}...` });
         const info = await new Promise((resolve, reject) => {
-          const extractArgs = ['--js-runtimes', `node:${process.execPath}`, '-j', '--no-playlist', activeDownload.url];
+          const extractArgs = ['--js-runtimes', NODE_PATH, '-j', '--no-playlist', activeDownload.url];
           execFile(binPath, extractArgs, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
             if (error) {
               return reject(new Error(stderr || error.message));
@@ -543,7 +544,7 @@ async function runDownloadQueue() {
       }
 
       const args = [
-        '--js-runtimes', `node:${process.execPath}`,
+        '--js-runtimes', NODE_PATH,
         '-o', path.join(videoDir, videoFilenameTemplate),
         '--no-playlist',
         '-f', format,
@@ -742,7 +743,7 @@ app.post('/api/extract', async (req, res) => {
 
     if (singleId) {
       // It's a single video, extract metadata directly
-      const extractArgs = ['--js-runtimes', `node:${process.execPath}`, '-j', '--no-playlist', url];
+      const extractArgs = ['--js-runtimes', NODE_PATH, '-j', '--no-playlist', url];
       execFile(binPath, extractArgs, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
         if (error) {
           return res.status(500).json({ error: stderr || error.message });
@@ -766,7 +767,7 @@ app.post('/api/extract', async (req, res) => {
       });
     } else {
       // It might be a channel or playlist. Use flat-playlist to load quickly
-      const playlistArgs = ['--js-runtimes', `node:${process.execPath}`, '--flat-playlist', '--dump-single-json', url];
+      const playlistArgs = ['--js-runtimes', NODE_PATH, '--flat-playlist', '--dump-single-json', url];
       execFile(binPath, playlistArgs, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
         if (error) {
           return res.status(500).json({ error: stderr || error.message });
